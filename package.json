@@ -1,0 +1,33 @@
+{
+  "name": "bitburner-discord-bot",
+  "version": "1.0.0",
+  "author": "catloversg",
+  "type": "module",
+  "scripts": {
+    "register-commands:dev": "node --env-file=.env tools/register-commands.ts",
+    "register-commands": "node --env-file=.env.production tools/register-commands.ts",
+    "cf-typegen": "wrangler types",
+    "dev": "wrangler dev",
+    "cf-deploy": "wrangler deploy --secrets-file .env.production",
+    "build": "esbuild src/server.ts --bundle --platform=node --format=esm --outdir=dist",
+    "deploy": "node --env-file=.env.production dist/server.js",
+    "format": "prettier . --write",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.15.0",
+    "jszip": "^3.10.2",
+    "prettier": "^3.10.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "wrangler": "^4.164.0"
+  },
+  "dependencies": {
+    "discord-interactions": "^4.4.0",
+    "fuzzysort": "^4.0.2",
+    "minisearch": "^7.2.0"
+  }
+}

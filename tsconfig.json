@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "types": ["node"],
+    "lib": ["esnext"]
+  },
+  "include": ["src/**/*", "tools/**/*"],
+  "exclude": ["src/cf-worker/index.ts", "worker-configuration.d.ts"]
+}
