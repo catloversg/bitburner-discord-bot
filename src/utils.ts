@@ -107,6 +107,10 @@ export function isValidSearchRequest(text: string): Result<{ words: string[] }> 
 
 export async function queryLlmForMdnUrl(searchText: string) {
   const modelOption = models.MediumCost;
+  const normalizedSearchText = searchText
+    .toLowerCase()
+    .replace(/[\s./_-]+/g, " ")
+    .trim();
   const payload = {
     temperature: 0,
     max_tokens: 45,
@@ -118,7 +122,7 @@ export async function queryLlmForMdnUrl(searchText: string) {
       },
       {
         role: "user" as const,
-        content: searchText,
+        content: normalizedSearchText,
       },
     ],
     ...(modelOption.reasoning && {
@@ -133,6 +137,8 @@ export async function queryLlmForMdnUrl(searchText: string) {
       headers: {
         Authorization: `Bearer ${process.env.CLOUDFLARE_WORKER_AI_API_TOKEN}`,
         "Content-Type": "application/json",
+        "cf-aig-gateway-id": "default",
+        "cf-aig-cache-ttl": "86400", // 24 hours
       },
       body: JSON.stringify(payload),
     },
