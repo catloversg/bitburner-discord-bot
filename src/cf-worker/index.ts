@@ -1,4 +1,4 @@
-import { handleDiscordRequest } from "../core";
+import { handleDiscordRequest } from "../core.ts";
 
 export default {
   async fetch(request) {

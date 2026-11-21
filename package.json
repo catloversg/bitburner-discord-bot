@@ -6,6 +6,7 @@
   "scripts": {
     "register-commands:dev": "node --env-file=.env tools/register-commands.ts",
     "register-commands": "node --env-file=.env.production tools/register-commands.ts",
+    "generate-data": "node --env-file=.env tools/generate-data.ts",
     "cf-typegen": "wrangler types",
     "dev": "wrangler dev",
     "cf-deploy": "wrangler deploy --secrets-file .env.production",

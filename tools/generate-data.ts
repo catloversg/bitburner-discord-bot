@@ -1,6 +1,10 @@
 import JSZip from "jszip";
 import { existsSync } from "node:fs";
 import { readdir, readFile, writeFile } from "node:fs/promises";
+import { getRequiredEnv } from "../src/utils.ts";
+
+const STABLE_NS_MARKDOWN_FOLDER = getRequiredEnv("STABLE_NS_MARKDOWN_FOLDER");
+const DEV_NS_MARKDOWN_FOLDER = getRequiredEnv("DEV_NS_MARKDOWN_FOLDER");
 
 async function readMdnRepository(): Promise<string[]> {
   const mdnRepository = new URL("../data/content-main.zip", import.meta.url);
@@ -42,19 +46,24 @@ async function generateMdnJsonData() {
 }
 
 async function generateNsJsonData() {
-  const nsMarkdownFolder = new URL("../data/ns-markdown", import.meta.url);
   const nsMarkdownFiles: Record<string, string> = {};
-  for (const key of await readdir(nsMarkdownFolder)) {
-    if (key === "index.md") {
-      continue;
+  for (const folder of [STABLE_NS_MARKDOWN_FOLDER, DEV_NS_MARKDOWN_FOLDER]) {
+    const isDev = folder === DEV_NS_MARKDOWN_FOLDER;
+    for (const key of await readdir(folder)) {
+      if (key === "index.md") {
+        continue;
+      }
+      const convertedKey = key.replace(/^bitburner\.|\.md$/g, "");
+      if (Object.hasOwn(nsMarkdownFiles, convertedKey)) {
+        continue;
+      }
+      nsMarkdownFiles[convertedKey] =
+        `https://github.com/bitburner-official/bitburner-src/blob/${!isDev ? "stable" : "dev"}/markdown/bitburner.${convertedKey}.md`;
     }
-    const convertedKey = key.replace(/^bitburner\.|\.md$/g, "");
-    nsMarkdownFiles[convertedKey] =
-      `https://github.com/bitburner-official/bitburner-src/blob/stable/markdown/bitburner.${convertedKey}.md`;
-  }
 
-  const nsJsonDataOutputPath = new URL("../data/ns-data.json", import.meta.url);
-  await writeFile(nsJsonDataOutputPath, JSON.stringify(nsMarkdownFiles, null, 1), "utf-8");
+    const nsJsonDataOutputPath = new URL("../data/ns-data.json", import.meta.url);
+    await writeFile(nsJsonDataOutputPath, JSON.stringify(nsMarkdownFiles, null, 1), "utf-8");
+  }
 }
 
 async function main() {

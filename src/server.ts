@@ -1,7 +1,7 @@
 import http from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { handleDiscordRequest } from "./core";
+import { handleDiscordRequest } from "./core.ts";
 
 const { DISCORD_APPLICATION_ID, DISCORD_BOT_PUBLIC_KEY, DISCORD_BOT_TOKEN } = process.env;
 

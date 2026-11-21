@@ -20,7 +20,7 @@ import {
   tipHandlers,
   type Interaction,
   type TipAndFunHandler,
-} from "./utils";
+} from "./utils.ts";
 
 export async function handleDiscordRequest(request: Request): Promise<Response> {
   if (request.method !== "POST") {
@@ -191,7 +191,11 @@ async function search(searchType: string, searchText: string): Promise<string> {
   }
   const exactUrl = exactSearch(searchType, searchText);
   if (exactUrl) {
-    return `Search text: ${searchText}\n- ${exactUrl}`;
+    if (exactUrl.includes("blob/dev/")) {
+      return `Search text: ${searchText}\n- ${exactUrl}\nThis API is only available in the dev version.`;
+    } else {
+      return `Search text: ${searchText}\n- ${exactUrl}`;
+    }
   }
   // Fallback to LLM (for MDN) + fuzzySearch
   const results = new Set<string>();
@@ -213,7 +217,16 @@ async function search(searchType: string, searchText: string): Promise<string> {
   if (results.size === 0) {
     return `Search text: ${searchText}\nNo results found.`;
   }
-  return `Search text: ${searchText}\n- ${[...results].join("\n- ")}`;
+  const resultsText = [...results].join("\n- ");
+  if (resultsText.includes("blob/dev/")) {
+    const warningMessage =
+      results.size === 1
+        ? "This API is only available in the dev version."
+        : "Some APIs are only available in the dev version.";
+    return `Search text: ${searchText}\n- ${resultsText}\n${warningMessage}`;
+  } else {
+    return `Search text: ${searchText}\n- ${resultsText}`;
+  }
 }
 
 function handleTipAndFun(interaction: Interaction, handlers: TipAndFunHandler) {

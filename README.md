@@ -24,8 +24,7 @@ To avoid cluttering the channels with personal searches, for MDN search and NS s
 Prerequisites:
 
 - Copy `.env.example` to `.env` and `.env.production`, then fill in the required configuration properties.
-- Create `ns-markdown` folder in the `data` folder and copy the files in the NS API markdown folder to `data/ns-markdown`.
-- Run `node tools/generate-data.ts` to generate MDN and NS JSON data files.
+- Run `npm run generate-data` to generate MDN and NS JSON data files.
 
 Dev: `npm run dev`: Starts a local dev server with built-in hot reload support. Press "t" to create a Cloudflare tunnel for the local server, then set the bot's interactive HTTP endpoint to the tunnel URL. This works without a Cloudflare account.
 
