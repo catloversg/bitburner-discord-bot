@@ -4,6 +4,7 @@ interface SlashCommandOption {
   type: number;
   required?: boolean;
   autocomplete?: boolean;
+  choices?: { name: string; value: string }[];
 }
 
 interface SlashCommand {
@@ -53,6 +54,17 @@ const commands: SlashCommand[] = [
         description: "Hide the reply from others (default: true)",
         type: 5, // boolean
         required: false,
+      },
+      {
+        name: "build-type",
+        description: "Search stable, dev, or both (default: both). Stable URLs take priority when available in both.",
+        type: 3,
+        required: false,
+        choices: [
+          { name: "both", value: "both" },
+          { name: "stable", value: "stable" },
+          { name: "dev", value: "dev" },
+        ],
       },
     ],
   },

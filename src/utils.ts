@@ -1,7 +1,9 @@
 import fuzzysort from "fuzzysort";
 import MiniSearch from "minisearch";
 import mdnData from "../data/mdn-data.json" with { type: "json" };
-import nsData from "../data/ns-data.json" with { type: "json" };
+import allNsData from "../data/all-ns-data.json" with { type: "json" };
+import stableNsData from "../data/stable-ns-data.json" with { type: "json" };
+import devNsData from "../data/dev-ns-data.json" with { type: "json" };
 
 type WorkerAIChatResponse = {
   choices?: Array<{ message?: { content?: string | null } }>;
@@ -194,28 +196,68 @@ function initFuzzySortSnapshot(data: Record<string, string>) {
 // the snapshot in module scope, so we lazily initialize it. We do the same for MiniSearch to avoid paying indexing CPU
 // cost when a command does not need it.
 let mdnMiniSearch: ReturnType<typeof initMiniSearch> | null = null;
-let nsMiniSearch: ReturnType<typeof initMiniSearch> | null = null;
+let allNsMiniSearch: ReturnType<typeof initMiniSearch> | null = null;
+let stableNsMiniSearch: ReturnType<typeof initMiniSearch> | null = null;
+let devNsMiniSearch: ReturnType<typeof initMiniSearch> | null = null;
 let mdnFuzzySortSnapshot: ReturnType<typeof initFuzzySortSnapshot> | null = null;
-let nsFuzzySortSnapshot: ReturnType<typeof initFuzzySortSnapshot> | null = null;
+let allNsFuzzySortSnapshot: ReturnType<typeof initFuzzySortSnapshot> | null = null;
+let stableNsFuzzySortSnapshot: ReturnType<typeof initFuzzySortSnapshot> | null = null;
+let devNsFuzzySortSnapshot: ReturnType<typeof initFuzzySortSnapshot> | null = null;
 
 export function getMdnMiniSearch() {
   return (mdnMiniSearch ??= initMiniSearch(mdnData));
 }
 
-export function getNsMiniSearch() {
-  return (nsMiniSearch ??= initMiniSearch(nsData));
+export function getAllNsMiniSearch() {
+  return (allNsMiniSearch ??= initMiniSearch(allNsData));
 }
+
+export function getStableNsMiniSearch() {
+  return (stableNsMiniSearch ??= initMiniSearch(stableNsData));
+}
+
+export function getDevNsMiniSearch() {
+  return (devNsMiniSearch ??= initMiniSearch(devNsData));
+}
+
+const nsMiniSearchGetters = {
+  both: getAllNsMiniSearch,
+  stable: getStableNsMiniSearch,
+  dev: getDevNsMiniSearch,
+};
 
 export function getMdnFuzzySortSnapshot() {
   return (mdnFuzzySortSnapshot ??= initFuzzySortSnapshot(mdnData));
 }
 
-export function getNsFuzzySortSnapshot() {
-  return (nsFuzzySortSnapshot ??= initFuzzySortSnapshot(nsData));
+export function getAllNsFuzzySortSnapshot() {
+  return (allNsFuzzySortSnapshot ??= initFuzzySortSnapshot(allNsData));
 }
 
-export function exactSearch(searchType: "mdn" | "ns", query: string): string | undefined {
-  const data: Record<string, string> = searchType === "mdn" ? mdnData : nsData;
+export function getStableNsFuzzySortSnapshot() {
+  return (stableNsFuzzySortSnapshot ??= initFuzzySortSnapshot(stableNsData));
+}
+
+export function getDevNsFuzzySortSnapshot() {
+  return (devNsFuzzySortSnapshot ??= initFuzzySortSnapshot(devNsData));
+}
+
+const nsFuzzySortSnapshotGetters = {
+  both: getAllNsFuzzySortSnapshot,
+  stable: getStableNsFuzzySortSnapshot,
+  dev: getDevNsFuzzySortSnapshot,
+};
+
+export type SearchOptions = { type: "mdn" } | { type: "ns"; buildType: "both" | "stable" | "dev" };
+
+const nsData = {
+  both: allNsData,
+  stable: stableNsData,
+  dev: devNsData,
+};
+
+export function exactSearch(query: string, searchOptions: SearchOptions): string | undefined {
+  const data: Record<string, string> = searchOptions.type === "mdn" ? mdnData : nsData[searchOptions.buildType];
 
   if (Object.hasOwn(data, query)) {
     return data[query];
@@ -237,10 +279,11 @@ export function exactSearch(searchType: "mdn" | "ns", query: string): string | u
   return undefined;
 }
 
-export function fuzzySearch(searchType: "mdn" | "ns", query: string) {
+export function fuzzySearch(query: string, searchOptions: SearchOptions) {
   const results = new Set<string>();
-  const miniSearch = searchType === "mdn" ? getMdnMiniSearch() : getNsMiniSearch();
-  const fuzzySortSnapshot = searchType === "mdn" ? getMdnFuzzySortSnapshot() : getNsFuzzySortSnapshot();
+  const miniSearch = searchOptions.type === "mdn" ? getMdnMiniSearch() : nsMiniSearchGetters[searchOptions.buildType]();
+  const fuzzySortSnapshot =
+    searchOptions.type === "mdn" ? getMdnFuzzySortSnapshot() : nsFuzzySortSnapshotGetters[searchOptions.buildType]();
   const maxSearchResultPerLib = 3;
   const miniSearchResults = miniSearch
     .search(query)
@@ -405,12 +448,4 @@ export function getAutocompleteSuggestions(command: string, query: unknown) {
     });
   }
   return choices;
-}
-
-export function getRequiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
 }

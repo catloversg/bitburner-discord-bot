@@ -19,6 +19,7 @@ import {
   SUPPRESS_EMBEDS,
   tipHandlers,
   type Interaction,
+  type SearchOptions,
   type TipAndFunHandler,
 } from "./utils.ts";
 
@@ -87,21 +88,44 @@ export async function handleDiscordRequest(request: Request): Promise<Response> 
 
 async function handleSearch(interaction: Interaction) {
   const options = interaction.data.options;
-  const firstOptionValue = options?.[0]?.value;
-  const secondOptionValue = options?.[1]?.value;
+  const searchTextOptionValue = options?.find((option) => option.name === "search-text")?.value;
+  const ephemeralOptionValue = options?.find((option) => option.name === "ephemeral")?.value;
+  const buildTypeOptionValue = options?.find((option) => option.name === "build-type")?.value;
 
-  if (firstOptionValue !== undefined && typeof firstOptionValue !== "string") {
+  if (searchTextOptionValue !== undefined && typeof searchTextOptionValue !== "string") {
     throw new Error(
-      `searchText must be a string. searchText: ${firstOptionValue}. typeof searchText: ${typeof firstOptionValue}`,
+      `search-text must be a string. search-text: ${searchTextOptionValue}. typeof search-text: ${typeof searchTextOptionValue}`,
     );
   }
-  if (secondOptionValue !== undefined && typeof secondOptionValue !== "boolean") {
+  if (ephemeralOptionValue !== undefined && typeof ephemeralOptionValue !== "boolean") {
     throw new Error(
-      `ephemeral must be a boolean. ephemeral: ${secondOptionValue}. typeof ephemeral: ${secondOptionValue}`,
+      `ephemeral must be a boolean. ephemeral: ${ephemeralOptionValue}. typeof ephemeral: ${typeof ephemeralOptionValue}`,
     );
   }
-  const searchText = firstOptionValue ?? "";
-  const isEphemeral = secondOptionValue ?? true;
+  if (buildTypeOptionValue !== undefined && typeof buildTypeOptionValue !== "string") {
+    throw new Error(
+      `build-type must be a string. build-type: ${buildTypeOptionValue}. typeof build-type: ${typeof buildTypeOptionValue}`,
+    );
+  }
+  const searchText = searchTextOptionValue ?? "";
+  const isEphemeral = ephemeralOptionValue ?? true;
+  const buildType = buildTypeOptionValue ?? "both";
+
+  const isValidBuildType = (value: string): value is "both" | "stable" | "dev" =>
+    value === "both" || value === "stable" || value === "dev";
+  const searchType = interaction.data.name;
+  let searchOptions: SearchOptions;
+
+  if (searchType === "mdn") {
+    searchOptions = { type: "mdn" };
+  } else if (searchType === "ns") {
+    if (!isValidBuildType(buildType)) {
+      throw new Error(`Invalid build type: ${buildType}`);
+    }
+    searchOptions = { type: "ns", buildType };
+  } else {
+    throw new Error(`Invalid search type: ${searchType}`);
+  }
 
   // Empty search request
   // This "feature" is currently disabled.
@@ -167,7 +191,7 @@ Searching ...
   });
 
   // Update response
-  const updatedMessage = await search(interaction.data.name, searchText);
+  const updatedMessage = await search(searchText, searchOptions);
   await fetch(
     `https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,
     {
@@ -185,11 +209,8 @@ Searching ...
   return new Response(null, { status: 202 });
 }
 
-async function search(searchType: string, searchText: string): Promise<string> {
-  if (searchType !== "mdn" && searchType !== "ns") {
-    throw new Error(`Invalid search type: ${searchType}`);
-  }
-  const exactUrl = exactSearch(searchType, searchText);
+async function search(searchText: string, searchOptions: SearchOptions): Promise<string> {
+  const exactUrl = exactSearch(searchText, searchOptions);
   if (exactUrl) {
     if (exactUrl.includes("blob/dev/")) {
       return `Search text: ${searchText}\n- ${exactUrl}\nThis API is only available in the dev version.`;
@@ -199,7 +220,7 @@ async function search(searchType: string, searchText: string): Promise<string> {
   }
   // Fallback to LLM (for MDN) + fuzzySearch
   const results = new Set<string>();
-  if (searchType === "mdn" && process.env.CLOUDFLARE_ACCOUNT_ID) {
+  if (searchOptions.type === "mdn" && process.env.CLOUDFLARE_ACCOUNT_ID) {
     let urlGuessedByLlm = "";
     try {
       urlGuessedByLlm = await queryLlmForMdnUrl(searchText);
@@ -210,7 +231,7 @@ async function search(searchType: string, searchText: string): Promise<string> {
       results.add(urlGuessedByLlm.toLowerCase());
     }
   }
-  for (const url of fuzzySearch(searchType, searchText)) {
+  for (const url of fuzzySearch(searchText, searchOptions)) {
     results.add(url);
   }
 

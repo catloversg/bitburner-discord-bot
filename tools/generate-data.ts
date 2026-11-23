@@ -1,7 +1,14 @@
 import JSZip from "jszip";
 import { existsSync } from "node:fs";
 import { readdir, readFile, writeFile } from "node:fs/promises";
-import { getRequiredEnv } from "../src/utils.ts";
+
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
 
 const STABLE_NS_MARKDOWN_FOLDER = getRequiredEnv("STABLE_NS_MARKDOWN_FOLDER");
 const DEV_NS_MARKDOWN_FOLDER = getRequiredEnv("DEV_NS_MARKDOWN_FOLDER");
@@ -46,24 +53,46 @@ async function generateMdnJsonData() {
 }
 
 async function generateNsJsonData() {
-  const nsMarkdownFiles: Record<string, string> = {};
-  for (const folder of [STABLE_NS_MARKDOWN_FOLDER, DEV_NS_MARKDOWN_FOLDER]) {
-    const isDev = folder === DEV_NS_MARKDOWN_FOLDER;
+  const allNsMarkdownFiles: Record<string, string> = {};
+  const stableNsMarkdownFiles: Record<string, string> = {};
+  const devNsMarkdownFiles: Record<string, string> = {};
+
+  for (const [folder, buildType] of [
+    [STABLE_NS_MARKDOWN_FOLDER, "stable"],
+    [DEV_NS_MARKDOWN_FOLDER, "dev"],
+  ] as const) {
+    const nsMarkdownFiles = buildType === "stable" ? stableNsMarkdownFiles : devNsMarkdownFiles;
+
     for (const key of await readdir(folder)) {
       if (key === "index.md") {
         continue;
       }
       const convertedKey = key.replace(/^bitburner\.|\.md$/g, "");
-      if (Object.hasOwn(nsMarkdownFiles, convertedKey)) {
-        continue;
-      }
-      nsMarkdownFiles[convertedKey] =
-        `https://github.com/bitburner-official/bitburner-src/blob/${!isDev ? "stable" : "dev"}/markdown/bitburner.${convertedKey}.md`;
-    }
+      const url = `https://github.com/bitburner-official/bitburner-src/blob/${buildType}/markdown/bitburner.${convertedKey}.md`;
 
-    const nsJsonDataOutputPath = new URL("../data/ns-data.json", import.meta.url);
-    await writeFile(nsJsonDataOutputPath, JSON.stringify(nsMarkdownFiles, null, 1), "utf-8");
+      nsMarkdownFiles[convertedKey] = url;
+
+      if (!Object.hasOwn(allNsMarkdownFiles, convertedKey)) {
+        allNsMarkdownFiles[convertedKey] = url;
+      }
+    }
   }
+
+  await writeFile(
+    new URL("../data/all-ns-data.json", import.meta.url),
+    JSON.stringify(allNsMarkdownFiles, null, 1),
+    "utf-8",
+  );
+  await writeFile(
+    new URL("../data/stable-ns-data.json", import.meta.url),
+    JSON.stringify(stableNsMarkdownFiles, null, 1),
+    "utf-8",
+  );
+  await writeFile(
+    new URL("../data/dev-ns-data.json", import.meta.url),
+    JSON.stringify(devNsMarkdownFiles, null, 1),
+    "utf-8",
+  );
 }
 
 async function main() {
